@@ -15,9 +15,9 @@ Security fixes land on the **latest 0.1.x** release first, then are backported t
 
 **Do not open a public GitHub issue for security bugs.**
 
-Report vulnerabilities **privately** using [GitHub Security Advisories](https://github.com/southline-tech/botmemory/security/advisories/new):
+Report vulnerabilities **privately** using [GitHub Security Advisories](https://github.com/southline-tech/botoptimizer/security/advisories/new):
 
-https://github.com/southline-tech/botmemory/security/advisories/new
+https://github.com/southline-tech/botoptimizer/security/advisories/new
 
 Include:
 

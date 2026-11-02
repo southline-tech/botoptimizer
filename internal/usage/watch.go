@@ -19,6 +19,7 @@ type WatchRule struct {
 	MaxTokens  int     `json:"max_tokens,omitempty"`
 	Multiplier float64 `json:"multiplier,omitempty"`
 	MaxN       int     `json:"max_n,omitempty"`
+	NearPct    float64 `json:"near_pct,omitempty"`
 	Message    string  `json:"message,omitempty"`
 }
 
@@ -179,4 +180,82 @@ func (s *Service) WatchCheck(ctx context.Context, authBot, project, botFilter st
 		}
 	}
 	return map[string]any{"alerts": alerts, "count": len(alerts)}, nil
+}
+
+type watchSuggestion struct {
+	Kind           string    `json:"kind"`
+	URLFingerprint string    `json:"url_fingerprint"`
+	ProposedRule   WatchRule `json:"proposed_rule"`
+	Action         string    `json:"action"`
+}
+
+func buildPollSuggestions(events []Event) []watchSuggestion {
+	byRef := pollStatsByRef(events)
+	var out []watchSuggestion
+	for ref, st := range byRef {
+		if !refQualifiesForPoll(st) {
+			continue
+		}
+		fp := urlFingerprint(ref)
+		id := "poll-" + fp
+		if len(id) > 40 {
+			id = id[:40]
+		}
+		out = append(out, watchSuggestion{
+			Kind:           "poll_to_watch",
+			URLFingerprint: fp,
+			ProposedRule: WatchRule{
+				ID: id, Kind: "proxy", Type: "recheck", Window: "1h", MaxN: 5,
+				Message: "url poll budget fp=" + fp,
+			},
+			Action: "add_watch_rule",
+		})
+	}
+	return out
+}
+
+// WatchSuggest returns polling→watch suggestions; writes watch.rules only when apply and iKnow are true.
+func (s *Service) WatchSuggest(ctx context.Context, authBot, project, botFilter string, since time.Time, apply, iKnow bool) (map[string]any, error) {
+	if since.IsZero() {
+		since = s.now().Add(-24 * time.Hour)
+	}
+	events, err := s.loadEvents(ctx, authBot, project, botFilter, since)
+	if err != nil {
+		return nil, err
+	}
+	suggestions := buildPollSuggestions(events)
+	out := map[string]any{
+		"dry_run": !(apply && iKnow), "suggestions": suggestions, "count": len(suggestions),
+	}
+	if !apply || !iKnow || len(suggestions) == 0 {
+		return out, nil
+	}
+	rules, err := s.loadWatchRules(ctx, authBot, project)
+	if err != nil {
+		return nil, err
+	}
+	for _, sug := range suggestions {
+		rules = append(rules, sug.ProposedRule)
+	}
+	b, _ := json.Marshal(rules)
+	rec, err := s.V.Get(ctx, authBot, project, WatchRulesKey(), 0)
+	if err != nil && err != vault.ErrNotFound {
+		return nil, err
+	}
+	if err == vault.ErrNotFound {
+		_, err = s.V.Put(ctx, authBot, vault.PutInput{
+			Project: project, Kind: "note", Key: WatchRulesKey(), Title: "watch rules", Body: string(b),
+		})
+	} else {
+		ver := rec.Version
+		_, err = s.V.Put(ctx, authBot, vault.PutInput{
+			Project: project, Key: WatchRulesKey(), Body: string(b), IfVersion: &ver,
+		})
+	}
+	if err != nil {
+		return nil, err
+	}
+	out["applied"] = true
+	out["dry_run"] = false
+	return out, nil
 }

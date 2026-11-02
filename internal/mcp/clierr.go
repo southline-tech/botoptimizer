@@ -20,6 +20,8 @@ func ExitCode(err error) int {
 		return 4
 	case errors.Is(err, vault.ErrConflict):
 		return 5
+	case errors.Is(err, usage.ErrClassInvalid), errors.Is(err, usage.ErrResetIncomplete), errors.Is(err, usage.ErrLimitNear):
+		return 6
 	case errors.Is(err, vault.ErrInvalid), errors.Is(err, usage.ErrInvalid):
 		return 6
 	default:

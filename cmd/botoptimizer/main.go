@@ -78,6 +78,14 @@ func main() {
 			fmt.Fprintln(os.Stderr, err.Error())
 			os.Exit(1)
 		}
+	case "memory":
+		if err := runMemoryCommand(os.Args[2:]); err != nil {
+			if errors.Is(err, errBotUsage) {
+				os.Exit(2)
+			}
+			fmt.Fprintln(os.Stderr, err.Error())
+			os.Exit(1)
+		}
 	case "mint-token":
 		if len(os.Args) != 3 {
 			log.Fatal("usage: botoptimizer mint-token BOT_ID")

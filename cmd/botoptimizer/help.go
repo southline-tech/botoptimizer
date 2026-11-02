@@ -14,7 +14,7 @@ Env: BOTOPTIMIZER_TOKEN_FILE, BOTOPTIMIZER_PROJECT, BOTOPTIMIZER_URL (default ht
 Commands:
   serve, stdio, migrate, bootstrap, mint-token, acl
   projects, list, brief, changed, get, put, append, search, history, stats, delete
-  usage (log|import|chart|hints), watch (check|init), import-usage
+  usage (log|import|chart|hints|classes|digest), watch (check|init|suggest), memory (reset-pack|reset-compare), import-usage
   version, ping
 
 Run: botoptimizer <command> --help
@@ -178,10 +178,24 @@ Example:
 `,
 	"usage hints": `usage: botoptimizer usage hints [--bot SLUG] [--since T] [--project NAME]
 
-Waste hints (recheck_loop, token_spike, …).
+Waste hints (reread_wake, poll_to_watch, modality_image, token_spike, …).
 
 Example:
   botoptimizer usage hints --since 2026-11-01
+`,
+	"usage classes": `usage: botoptimizer usage classes [--bot SLUG] [--since T] [--project NAME]
+
+Aggregate tokens/events by class= on log lines.
+
+Example:
+  botoptimizer usage classes --since 2026-11-01
+`,
+	"usage digest": `usage: botoptimizer usage digest [--date YYYY-MM-DD] [--week-limit N] [--near-pct P] [--save] [--out FILE] [--strict-near] [--project NAME]
+
+Daily rollup + weekly limit block (LIMIT_NEAR when near).
+
+Example:
+  botoptimizer usage digest --week-limit 500000 --save
 `,
 	"watch": `usage: botoptimizer watch check|init ...
 
@@ -201,6 +215,34 @@ Create watch.rules with defaults if missing.
 
 Example:
   botoptimizer watch init
+`,
+	"watch suggest": `usage: botoptimizer watch suggest [--bot SLUG] [--since T] [--apply] [--project NAME]
+
+Polling→watch suggestions (dry-run unless --apply and --i-know).
+
+Example:
+  botoptimizer watch suggest
+`,
+	"memory": `usage: botoptimizer memory reset-pack|reset-compare [--project NAME]
+
+Guided heavy-bot reset export (no deletes).
+
+Example:
+  botoptimizer memory reset-pack
+`,
+	"memory reset-pack": `usage: botoptimizer memory reset-pack --out DIR [--bot SLUG] [--save-vault] [--project NAME]
+
+Write DIR/must-keep/, DIR/before.json, DIR/RESET.md (optional vault snapshot).
+
+Example:
+  botoptimizer memory reset-pack --bot my-agent --out /tmp/reset
+`,
+	"memory reset-compare": `usage: botoptimizer memory reset-compare [--before PATH] [--bot SLUG] [--project NAME]
+
+Token delta vs before.json or usage.reset.before (RESET_INCOMPLETE if missing).
+
+Example:
+  botoptimizer memory reset-compare --before /tmp/reset/before.json --bot new-agent
 `,
 	"import-usage": `usage: botoptimizer import-usage FILE.csv --date YYYY-MM-DD [--tz TZ] [--map time=...,bot=...]
 

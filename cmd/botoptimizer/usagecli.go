@@ -29,6 +29,10 @@ func runUsageCommand(args []string) error {
 		return runUsageChart(rest)
 	case "hints":
 		return runUsageHints(rest)
+	case "classes":
+		return runUsageClasses(rest)
+	case "digest":
+		return runUsageDigest(rest)
 	default:
 		return errBotUsage
 	}
@@ -43,6 +47,8 @@ func runWatchCommand(args []string) error {
 		return runWatchCheck(args[1:])
 	case "init":
 		return runWatchInit(args[1:])
+	case "suggest":
+		return runWatchSuggest(args[1:])
 	default:
 		return errBotUsage
 	}
@@ -167,6 +173,15 @@ func runUsageLog(args []string) error {
 		case "--ref":
 			i++
 			a["ref"] = args[i]
+		case "--class":
+			i++
+			a["class"] = args[i]
+		case "--mod":
+			i++
+			a["mod"] = args[i]
+		case "--hist":
+			i++
+			a["hist"], _ = strconv.Atoi(args[i])
 		case "--project":
 			i++
 			a["project"] = args[i]
@@ -262,6 +277,121 @@ func runUsageHints(args []string) error {
 		}
 	}
 	return usageToolCall("usage_hints", m)
+}
+
+func runUsageClasses(args []string) error {
+	m := map[string]any{}
+	for i := 0; i < len(args); i++ {
+		switch args[i] {
+		case "--bot":
+			i++
+			m["bot"] = args[i]
+		case "--since":
+			i++
+			m["since"] = args[i]
+		case "--project":
+			i++
+			m["project"] = args[i]
+		}
+	}
+	return usageToolCall("usage_classes", m)
+}
+
+func runUsageDigest(args []string) error {
+	m := map[string]any{}
+	var outMD string
+	strictNear := false
+	for i := 0; i < len(args); i++ {
+		switch args[i] {
+		case "--date":
+			i++
+			m["date"] = args[i]
+		case "--week-limit":
+			i++
+			n, err := strconv.Atoi(args[i])
+			if err != nil {
+				return fmt.Errorf("%w: bad --week-limit", usage.ErrInvalid)
+			}
+			m["week_limit"] = n
+		case "--near-pct":
+			i++
+			f, err := strconv.ParseFloat(args[i], 64)
+			if err != nil {
+				return fmt.Errorf("%w: bad --near-pct", usage.ErrInvalid)
+			}
+			m["near_pct"] = f
+		case "--save":
+			m["save"] = true
+		case "--strict-near":
+			strictNear = true
+		case "--out":
+			i++
+			outMD = args[i]
+		case "--project":
+			i++
+			m["project"] = args[i]
+		}
+	}
+	f, _, err := parseBotFlags(nil)
+	if err != nil {
+		return err
+	}
+	tok, err := loadToken(f)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err.Error())
+		os.Exit(6)
+	}
+	c := &mcpClient{url: f.url, token: tok, hc: &http.Client{Timeout: 10 * time.Second}}
+	raw, err := c.callTool(context.Background(), "usage_digest", withProject(f, m))
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err.Error())
+		os.Exit(mcp.ExitCode(err))
+	}
+	if outMD != "" {
+		if dm, ok := raw.(map[string]any); ok {
+			if err := os.WriteFile(outMD, []byte(usage.DigestMarkdown(dm)), 0644); err != nil {
+				return err
+			}
+		}
+	}
+	b, err := encodeOut(raw, f.human)
+	if err != nil {
+		return err
+	}
+	os.Stdout.Write(b)
+	if !f.human && len(b) > 0 && b[len(b)-1] != '\n' {
+		os.Stdout.Write([]byte("\n"))
+	}
+	if strictNear {
+		if dm, ok := raw.(map[string]any); ok {
+			if near, _ := dm["near"].(bool); near {
+				os.Exit(2)
+			}
+		}
+	}
+	return nil
+}
+
+func runWatchSuggest(args []string) error {
+	m := map[string]any{}
+	for i := 0; i < len(args); i++ {
+		switch args[i] {
+		case "--bot":
+			i++
+			m["bot"] = args[i]
+		case "--since":
+			i++
+			m["since"] = args[i]
+		case "--project":
+			i++
+			m["project"] = args[i]
+		case "--apply":
+			m["apply"] = true
+		case "--i-know":
+			m["i_know"] = true
+		}
+	}
+	return usageToolCall("watch_suggest", m)
 }
 
 func runWatchCheck(args []string) error {

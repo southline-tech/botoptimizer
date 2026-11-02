@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased (v0.6)
+
+### Credit Shield / waste intelligence (v0.6 — RAD-306)
+
+- **`usage hints`**: `reread_wake` (score), `poll_to_watch`, `modality_image` (plus existing `screenshot_bloat`).
+- **`watch suggest` / `watch_suggest`**: dry-run polling→watch suggestions; `--apply` writes rules.
+- **`usage log --class`**: `chat|browser|mcp|script`; **`usage classes` / `usage_classes`** aggregates.
+- **`memory reset-pack` / `reset-compare`**: must-keep export + usage snapshot; `RESET_INCOMPLETE` without before.
+- **`usage digest` / `usage_digest`**: day rollup, weekly limit near (`LIMIT_NEAR`), optional `--save` / `--out`.
+
 ## Unreleased (v0.4 + v0.5)
 
 ### BotOptimizer rename (v0.5)

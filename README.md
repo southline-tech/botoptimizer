@@ -53,7 +53,7 @@ One child process **per bot**, each with its own token env (shared tokens break 
 
 First-class commands: `projects`, `list`, `brief`, `changed`, `get`, `put`, `append`, `search`, `history`, `stats`, `delete`, `version`, `ping`, `usage`, `watch`, `import-usage`. Token from `--token-file`, `BOTOPTIMIZER_TOKEN_FILE`, or `BOTOPTIMIZER_TOKEN`. Project from `--project`, `BOTOPTIMIZER_PROJECT`, or ACL `default_project`. Server URL: `BOTOPTIMIZER_URL` (default `http://127.0.0.1:8787/mcp`). `put --file` / `append --file` read body/text from disk (never logged).
 
-**Usage (v0.4):** Log **real provider token counts** with `usage log --type tokens --in N --out N` whenever the API returns usage. Use proxy etypes only when counts are hidden. **Never fabricate token numbers.** Charts prefer summed tokens; share/CSV are labeled fallbacks. See [examples/usageproxy/README.md](examples/usageproxy/README.md).
+**Usage (v0.4–v0.6):** Log **real provider token counts** with `usage log --type tokens --in N --out N` whenever the API returns usage; optional `--class chat|browser|mcp|script`. Use `usage hints`, `usage digest`, `watch suggest`, and `memory reset-pack` for Credit Shield workflows. Use proxy etypes only when counts are hidden. **Never fabricate token numbers.** Charts prefer summed tokens; share/CSV are labeled fallbacks. See [examples/usageproxy/README.md](examples/usageproxy/README.md).
 
 ```sh
 botoptimizer list --project demo
