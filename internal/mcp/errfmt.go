@@ -12,6 +12,12 @@ func errCode(err error) string {
 	switch {
 	case errors.Is(err, vault.ErrKindInvalid):
 		return "KIND_INVALID"
+	case errors.Is(err, usage.ErrClassInvalid):
+		return "CLASS_INVALID"
+	case errors.Is(err, usage.ErrResetIncomplete):
+		return "RESET_INCOMPLETE"
+	case errors.Is(err, usage.ErrLimitNear):
+		return "LIMIT_NEAR"
 	case errors.Is(err, usage.ErrRangeInvalid):
 		return "RANGE_INVALID"
 	case errors.Is(err, usage.ErrCSVZone):
@@ -41,6 +47,12 @@ func errHint(code string) string {
 		return "check args; project may need BOTOPTIMIZER_PROJECT"
 	case "KIND_INVALID":
 		return "append --kind is handoff|spec|decision|note|usage (default note)"
+	case "CLASS_INVALID":
+		return "class must be chat|browser|mcp|script on usage log lines"
+	case "RESET_INCOMPLETE":
+		return "run memory reset-pack before reset-compare"
+	case "LIMIT_NEAR":
+		return "weekly token budget within near_pct; tune usage.budget.week or --week-limit"
 	case "RANGE_INVALID":
 		return "use --range between 24h and 90d"
 	case "CSV_TZ_REQUIRED":

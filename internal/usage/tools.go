@@ -32,6 +32,9 @@ type logToolArgs struct {
 	PR    string  `json:"pr"`
 	Key   string  `json:"key"`
 	Ref   string  `json:"ref"`
+	Class string  `json:"class"`
+	Mod   string  `json:"mod"`
+	Hist  int     `json:"hist"`
 }
 
 type importToolArgs struct {
@@ -68,6 +71,35 @@ type hintsToolArgs struct {
 	projectArg
 	Bot   string `json:"bot"`
 	Since string `json:"since"`
+}
+
+type classesToolArgs struct {
+	projectArg
+	Bot   string `json:"bot"`
+	Since string `json:"since"`
+}
+
+type watchSuggestArgs struct {
+	projectArg
+	Bot   string `json:"bot"`
+	Since string `json:"since"`
+	Apply bool   `json:"apply"`
+}
+
+type digestToolArgs struct {
+	projectArg
+	Date      string  `json:"date"`
+	WeekLimit int     `json:"week_limit"`
+	NearPct   float64 `json:"near_pct"`
+	Save      bool    `json:"save"`
+}
+
+type resetPackArgs struct {
+	projectArg
+}
+
+type resetCompareArgs struct {
+	projectArg
 }
 
 // ValidateUsageLogMap checks CLI-assembled usage_log args before MCP call.
@@ -109,6 +141,7 @@ func CallTool(ctx context.Context, v *vault.Vault, authBot, name string, raw jso
 		return svc.Log(ctx, authBot, project, LogInput{
 			Bot: a.Bot, Type: a.Type, In: a.In, Out: a.Out, Cache: a.Cache,
 			Model: a.Model, Cost: a.Cost, N: a.N, Bytes: a.Bytes, Tool: a.Tool, PR: a.PR, Key: a.Key, Ref: a.Ref,
+			Class: a.Class, Mod: a.Mod, Hist: a.Hist,
 		})
 	case "usage_import":
 		var a importToolArgs
@@ -222,6 +255,70 @@ func CallTool(ctx context.Context, v *vault.Vault, authBot, name string, raw jso
 			}
 		}
 		return svc.Hints(ctx, authBot, project, a.Bot, since)
+	case "usage_classes":
+		var a classesToolArgs
+		if err := decodeTool(raw, &a); err != nil {
+			return nil, fmt.Errorf("%w: %v", vault.ErrInvalid, err)
+		}
+		project, err := resolveProject(a.Project)
+		if err != nil {
+			return nil, err
+		}
+		since := time.Time{}
+		if strings.TrimSpace(a.Since) != "" {
+			since, err = vault.ParseSince(a.Since)
+			if err != nil {
+				return nil, err
+			}
+		}
+		return svc.Classes(ctx, authBot, project, a.Bot, since)
+	case "watch_suggest":
+		var a watchSuggestArgs
+		if err := decodeTool(raw, &a); err != nil {
+			return nil, fmt.Errorf("%w: %v", vault.ErrInvalid, err)
+		}
+		project, err := resolveProject(a.Project)
+		if err != nil {
+			return nil, err
+		}
+		since := time.Time{}
+		if strings.TrimSpace(a.Since) != "" {
+			since, err = vault.ParseSince(a.Since)
+			if err != nil {
+				return nil, err
+			}
+		}
+		return svc.WatchSuggest(ctx, authBot, project, a.Bot, since, a.Apply)
+	case "usage_digest":
+		var a digestToolArgs
+		if err := decodeTool(raw, &a); err != nil {
+			return nil, fmt.Errorf("%w: %v", vault.ErrInvalid, err)
+		}
+		project, err := resolveProject(a.Project)
+		if err != nil {
+			return nil, err
+		}
+		return svc.Digest(ctx, authBot, project, a.Date, a.WeekLimit, a.NearPct, a.Save)
+	case "memory_reset_pack":
+		var a resetPackArgs
+		if err := decodeTool(raw, &a); err != nil {
+			return nil, fmt.Errorf("%w: %v", vault.ErrInvalid, err)
+		}
+		project, err := resolveProject(a.Project)
+		if err != nil {
+			return nil, err
+		}
+		return svc.ResetPack(ctx, authBot, project)
+	case "memory_reset_compare":
+		var a resetCompareArgs
+		if err := decodeTool(raw, &a); err != nil {
+			return nil, fmt.Errorf("%w: %v", vault.ErrInvalid, err)
+		}
+		project, err := resolveProject(a.Project)
+		if err != nil {
+			return nil, err
+		}
+		return svc.ResetCompare(ctx, authBot, project)
 	default:
 		return nil, fmt.Errorf("unknown usage tool %q", name)
 	}

@@ -19,6 +19,7 @@ type WatchRule struct {
 	MaxTokens  int     `json:"max_tokens,omitempty"`
 	Multiplier float64 `json:"multiplier,omitempty"`
 	MaxN       int     `json:"max_n,omitempty"`
+	NearPct    float64 `json:"near_pct,omitempty"`
 	Message    string  `json:"message,omitempty"`
 }
 
@@ -179,4 +180,83 @@ func (s *Service) WatchCheck(ctx context.Context, authBot, project, botFilter st
 		}
 	}
 	return map[string]any{"alerts": alerts, "count": len(alerts)}, nil
+}
+
+type watchSuggestion struct {
+	ID      string `json:"id"`
+	Ref     string `json:"ref"`
+	Message string `json:"message"`
+}
+
+func pollURLRefs(events []Event) []watchSuggestion {
+	seen := map[string]struct{}{}
+	var out []watchSuggestion
+	for _, e := range events {
+		if e.Ref == "" || !urlRefRE.MatchString(e.Ref) {
+			continue
+		}
+		if e.Type != "recheck" && e.Type != "read" && e.Type != "retry" {
+			continue
+		}
+		if _, ok := seen[e.Ref]; ok {
+			continue
+		}
+		seen[e.Ref] = struct{}{}
+		out = append(out, watchSuggestion{
+			ID: "poll_to_watch", Ref: e.Ref, Message: "consider watch instead of polling",
+		})
+	}
+	return out
+}
+
+// WatchSuggest returns polling→watch suggestions; apply writes watch.rules only when apply is true.
+func (s *Service) WatchSuggest(ctx context.Context, authBot, project, botFilter string, since time.Time, apply bool) (map[string]any, error) {
+	if since.IsZero() {
+		since = s.now().Add(-24 * time.Hour)
+	}
+	events, err := s.loadEvents(ctx, authBot, project, botFilter, since)
+	if err != nil {
+		return nil, err
+	}
+	suggestions := pollURLRefs(events)
+	out := map[string]any{
+		"dry_run": !apply, "suggestions": suggestions, "count": len(suggestions),
+	}
+	if !apply || len(suggestions) == 0 {
+		return out, nil
+	}
+	rules, err := s.loadWatchRules(ctx, authBot, project)
+	if err != nil {
+		return nil, err
+	}
+	for _, sug := range suggestions {
+		id := "poll-" + sanitizeKV(strings.TrimPrefix(strings.TrimPrefix(sug.Ref, "https://"), "http://"))
+		if len(id) > 40 {
+			id = id[:40]
+		}
+		rules = append(rules, WatchRule{
+			ID: id, Kind: "proxy", Type: "recheck", Window: "1h", MaxN: 5,
+			Message: "url poll budget for " + sug.Ref,
+		})
+	}
+	b, _ := json.Marshal(rules)
+	rec, err := s.V.Get(ctx, authBot, project, WatchRulesKey(), 0)
+	if err != nil && err != vault.ErrNotFound {
+		return nil, err
+	}
+	if err == vault.ErrNotFound {
+		_, err = s.V.Put(ctx, authBot, vault.PutInput{
+			Project: project, Kind: "note", Key: WatchRulesKey(), Title: "watch rules", Body: string(b),
+		})
+	} else {
+		ver := rec.Version
+		_, err = s.V.Put(ctx, authBot, vault.PutInput{
+			Project: project, Key: WatchRulesKey(), Body: string(b), IfVersion: &ver,
+		})
+	}
+	if err != nil {
+		return nil, err
+	}
+	out["applied"] = true
+	return out, nil
 }

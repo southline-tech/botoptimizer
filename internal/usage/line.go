@@ -34,6 +34,9 @@ type Event struct {
 	PR    string
 	Key   string
 	Ref   string
+	Class string
+	Mod   string
+	Hist  int
 	Raw   string
 }
 
@@ -52,6 +55,9 @@ type LogInput struct {
 	PR    string
 	Key   string
 	Ref   string
+	Class string
+	Mod   string
+	Hist  int
 }
 
 func (in LogInput) format(at time.Time) (string, error) {
@@ -68,6 +74,10 @@ func (in LogInput) format(at time.Time) (string, error) {
 		}
 	} else if _, ok := proxyTypes[typ]; !ok {
 		return "", fmt.Errorf("%w: unknown type %q", ErrInvalid, typ)
+	}
+	cls, err := normalizeLogClass(in.Class, typ)
+	if err != nil {
+		return "", err
 	}
 	parts := []string{at.UTC().Format(time.RFC3339), typ}
 	if typ == "tokens" {
@@ -100,6 +110,15 @@ func (in LogInput) format(at time.Time) (string, error) {
 	}
 	if in.Ref != "" {
 		parts = append(parts, "ref="+sanitizeKV(in.Ref))
+	}
+	if cls != "" {
+		parts = append(parts, "class="+cls)
+	}
+	if in.Mod != "" {
+		parts = append(parts, "mod="+sanitizeKV(in.Mod))
+	}
+	if in.Hist > 0 {
+		parts = append(parts, fmt.Sprintf("hist=%d", in.Hist))
 	}
 	line := strings.Join(parts, " ")
 	if len(line) > maxLogLine {
@@ -155,6 +174,12 @@ func parseEventsFromBody(bot, body string) []Event {
 		ev.PR = kv["pr"]
 		ev.Key = kv["key"]
 		ev.Ref = kv["ref"]
+		ev.Class = kv["class"]
+		ev.Mod = kv["mod"]
+		ev.Hist = atoi(kv["hist"])
+		if ev.Class == "" && (ev.Type == "tokens" || ev.Type == "msg") {
+			ev.Class = "chat"
+		}
 		if c, ok := kv["cost"]; ok {
 			ev.Cost, _ = strconv.ParseFloat(c, 64)
 		}

@@ -50,9 +50,13 @@ One MCP server process **per bot** with its own `BOTOPTIMIZER_TOKEN` or `BOTOPTI
 | `usage_import_csv` | Dashboard CSV ground truth → `usage.csv.<date>` |
 | `watch_check` / `watch_init` | Token budget rules **before** proxy rules |
 | `usage_chart` | Offline HTML+SVG (`--range` 24h–90d); `explain` at timestamp |
-| `usage_hints` | Waste patterns + `token_spike` |
+| `usage_hints` | Waste patterns + `token_spike`, `reread_wake`, `poll_to_watch`, `modality_image` |
+| `usage_classes` | Token/event rollup by `class=` (`chat|browser|mcp|script`) |
+| `watch_suggest` | Polling→watch suggestions (dry-run unless `apply`) |
+| `usage_digest` | Daily rollup + weekly `limit` block; optional save to `usage.digest.<date>` |
+| `memory_reset_pack` / `memory_reset_compare` | Heavy-bot reset export (no deletes); delta vs `usage.reset.before` |
 
-**Usage:** Log **`tokens`** with provider-reported `in`/`out`/`cache`/`model` whenever available. Use proxy etypes (`wake`, `bytes_r`, `tool`, …) only when counts are hidden. **Never fabricate token numbers.**
+**Usage:** Log **`tokens`** with provider-reported `in`/`out`/`cache`/`model` whenever available. Optional `class=` on lines. Use proxy etypes (`wake`, `bytes_r`, `tool`, …) only when counts are hidden. **Never fabricate token numbers.**
 
 - **`get` / `history`:** include **archived** records; **`list` / `search`** hide archived unless `status:"archived"`.
 
@@ -81,6 +85,7 @@ Compact JSON stdout; errors `CODE: …; hint: …` on stderr.
 - `FORBIDDEN`: ask owner for `acl grant`.
 - `CONFLICT`: `get`, retry `put` once with `if_version`.
 - `NOT_FOUND` on `get`: `put` or `append` (append creates).
+- `CLASS_INVALID`, `RESET_INCOMPLETE`, `LIMIT_NEAR`: see tool hint text.
 
 Example flows: [docs/examples-multi-agent.md](docs/examples-multi-agent.md).
 
