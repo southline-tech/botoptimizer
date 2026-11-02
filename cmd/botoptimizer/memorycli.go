@@ -8,20 +8,77 @@ func runMemoryCommand(args []string) error {
 	rest := args[1:]
 	switch args[0] {
 	case "reset-pack":
-		return memoryToolCall("memory_reset_pack", m, rest)
+		if err := parseResetPackFlags(m, rest); err != nil {
+			return err
+		}
+		return usageToolCall("memory_reset_pack", m)
 	case "reset-compare":
-		return memoryToolCall("memory_reset_compare", m, rest)
+		if err := parseResetCompareFlags(m, rest); err != nil {
+			return err
+		}
+		return usageToolCall("memory_reset_compare", m)
 	default:
 		return errBotUsage
 	}
 }
 
-func memoryToolCall(tool string, base map[string]any, args []string) error {
+func parseResetPackFlags(m map[string]any, args []string) error {
 	for i := 0; i < len(args); i++ {
-		if args[i] == "--project" && i+1 < len(args) {
-			base["project"] = args[i+1]
+		switch args[i] {
+		case "--bot":
 			i++
+			if i >= len(args) {
+				return errBotUsage
+			}
+			m["bot"] = args[i]
+		case "--out":
+			i++
+			if i >= len(args) {
+				return errBotUsage
+			}
+			m["out_dir"] = args[i]
+		case "--save-vault":
+			m["save_vault"] = true
+		case "--project":
+			i++
+			if i >= len(args) {
+				return errBotUsage
+			}
+			m["project"] = args[i]
+		default:
+			return errBotUsage
 		}
 	}
-	return usageToolCall(tool, base)
+	if _, ok := m["out_dir"]; !ok {
+		return errBotUsage
+	}
+	return nil
+}
+
+func parseResetCompareFlags(m map[string]any, args []string) error {
+	for i := 0; i < len(args); i++ {
+		switch args[i] {
+		case "--before":
+			i++
+			if i >= len(args) {
+				return errBotUsage
+			}
+			m["before_path"] = args[i]
+		case "--bot":
+			i++
+			if i >= len(args) {
+				return errBotUsage
+			}
+			m["bot"] = args[i]
+		case "--project":
+			i++
+			if i >= len(args) {
+				return errBotUsage
+			}
+			m["project"] = args[i]
+		default:
+			return errBotUsage
+		}
+	}
+	return nil
 }

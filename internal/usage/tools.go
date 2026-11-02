@@ -84,6 +84,7 @@ type watchSuggestArgs struct {
 	Bot   string `json:"bot"`
 	Since string `json:"since"`
 	Apply bool   `json:"apply"`
+	IKnow bool   `json:"i_know"`
 }
 
 type digestToolArgs struct {
@@ -96,10 +97,15 @@ type digestToolArgs struct {
 
 type resetPackArgs struct {
 	projectArg
+	Bot       string `json:"bot"`
+	OutDir    string `json:"out_dir"`
+	SaveVault bool   `json:"save_vault"`
 }
 
 type resetCompareArgs struct {
 	projectArg
+	BeforePath string `json:"before_path"`
+	Bot        string `json:"bot"`
 }
 
 // ValidateUsageLogMap checks CLI-assembled usage_log args before MCP call.
@@ -288,7 +294,7 @@ func CallTool(ctx context.Context, v *vault.Vault, authBot, name string, raw jso
 				return nil, err
 			}
 		}
-		return svc.WatchSuggest(ctx, authBot, project, a.Bot, since, a.Apply)
+		return svc.WatchSuggest(ctx, authBot, project, a.Bot, since, a.Apply, a.IKnow)
 	case "usage_digest":
 		var a digestToolArgs
 		if err := decodeTool(raw, &a); err != nil {
@@ -308,7 +314,9 @@ func CallTool(ctx context.Context, v *vault.Vault, authBot, name string, raw jso
 		if err != nil {
 			return nil, err
 		}
-		return svc.ResetPack(ctx, authBot, project)
+		return svc.ResetPack(ctx, authBot, project, ResetPackInput{
+			Bot: a.Bot, OutDir: a.OutDir, SaveVault: a.SaveVault,
+		})
 	case "memory_reset_compare":
 		var a resetCompareArgs
 		if err := decodeTool(raw, &a); err != nil {
@@ -318,7 +326,9 @@ func CallTool(ctx context.Context, v *vault.Vault, authBot, name string, raw jso
 		if err != nil {
 			return nil, err
 		}
-		return svc.ResetCompare(ctx, authBot, project)
+		return svc.ResetCompare(ctx, authBot, project, ResetCompareInput{
+			BeforePath: a.BeforePath, Bot: a.Bot,
+		})
 	default:
 		return nil, fmt.Errorf("unknown usage tool %q", name)
 	}

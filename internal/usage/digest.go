@@ -90,7 +90,7 @@ func (s *Service) Digest(ctx context.Context, authBot, project, date string, wee
 	if err != nil {
 		return nil, err
 	}
-	suggest, err := s.WatchSuggest(ctx, authBot, project, "", dayStart, false)
+	suggest, err := s.WatchSuggest(ctx, authBot, project, "", dayStart, false, false)
 	if err != nil {
 		return nil, err
 	}

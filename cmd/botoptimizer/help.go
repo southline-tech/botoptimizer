@@ -218,7 +218,7 @@ Example:
 `,
 	"watch suggest": `usage: botoptimizer watch suggest [--bot SLUG] [--since T] [--apply] [--project NAME]
 
-Polling→watch suggestions (dry-run unless --apply).
+Polling→watch suggestions (dry-run unless --apply and --i-know).
 
 Example:
   botoptimizer watch suggest
@@ -230,19 +230,19 @@ Guided heavy-bot reset export (no deletes).
 Example:
   botoptimizer memory reset-pack
 `,
-	"memory reset-pack": `usage: botoptimizer memory reset-pack [--project NAME]
+	"memory reset-pack": `usage: botoptimizer memory reset-pack --out DIR [--bot SLUG] [--save-vault] [--project NAME]
 
-Export must-keep notes + usage.reset.before snapshot + RESET.md checklist.
+Write DIR/must-keep/, DIR/before.json, DIR/RESET.md (optional vault snapshot).
 
 Example:
-  botoptimizer memory reset-pack
+  botoptimizer memory reset-pack --bot my-agent --out /tmp/reset
 `,
-	"memory reset-compare": `usage: botoptimizer memory reset-compare [--project NAME]
+	"memory reset-compare": `usage: botoptimizer memory reset-compare [--before PATH] [--bot SLUG] [--project NAME]
 
-Token delta vs usage.reset.before (RESET_INCOMPLETE if missing).
+Token delta vs before.json or usage.reset.before (RESET_INCOMPLETE if missing).
 
 Example:
-  botoptimizer memory reset-compare
+  botoptimizer memory reset-compare --before /tmp/reset/before.json --bot new-agent
 `,
 	"import-usage": `usage: botoptimizer import-usage FILE.csv --date YYYY-MM-DD [--tz TZ] [--map time=...,bot=...]
 

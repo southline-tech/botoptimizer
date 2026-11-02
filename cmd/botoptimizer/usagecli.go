@@ -387,6 +387,8 @@ func runWatchSuggest(args []string) error {
 			m["project"] = args[i]
 		case "--apply":
 			m["apply"] = true
+		case "--i-know":
+			m["i_know"] = true
 		}
 	}
 	return usageToolCall("watch_suggest", m)

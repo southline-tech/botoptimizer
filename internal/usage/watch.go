@@ -183,34 +183,39 @@ func (s *Service) WatchCheck(ctx context.Context, authBot, project, botFilter st
 }
 
 type watchSuggestion struct {
-	ID      string `json:"id"`
-	Ref     string `json:"ref"`
-	Message string `json:"message"`
+	Kind           string    `json:"kind"`
+	URLFingerprint string    `json:"url_fingerprint"`
+	ProposedRule   WatchRule `json:"proposed_rule"`
+	Action         string    `json:"action"`
 }
 
-func pollURLRefs(events []Event) []watchSuggestion {
-	seen := map[string]struct{}{}
+func buildPollSuggestions(events []Event) []watchSuggestion {
+	byRef := pollStatsByRef(events)
 	var out []watchSuggestion
-	for _, e := range events {
-		if e.Ref == "" || !urlRefRE.MatchString(e.Ref) {
+	for ref, st := range byRef {
+		if !refQualifiesForPoll(st) {
 			continue
 		}
-		if e.Type != "recheck" && e.Type != "read" && e.Type != "retry" {
-			continue
+		fp := urlFingerprint(ref)
+		id := "poll-" + fp
+		if len(id) > 40 {
+			id = id[:40]
 		}
-		if _, ok := seen[e.Ref]; ok {
-			continue
-		}
-		seen[e.Ref] = struct{}{}
 		out = append(out, watchSuggestion{
-			ID: "poll_to_watch", Ref: e.Ref, Message: "consider watch instead of polling",
+			Kind:           "poll_to_watch",
+			URLFingerprint: fp,
+			ProposedRule: WatchRule{
+				ID: id, Kind: "proxy", Type: "recheck", Window: "1h", MaxN: 5,
+				Message: "url poll budget fp=" + fp,
+			},
+			Action: "add_watch_rule",
 		})
 	}
 	return out
 }
 
-// WatchSuggest returns polling→watch suggestions; apply writes watch.rules only when apply is true.
-func (s *Service) WatchSuggest(ctx context.Context, authBot, project, botFilter string, since time.Time, apply bool) (map[string]any, error) {
+// WatchSuggest returns polling→watch suggestions; writes watch.rules only when apply and iKnow are true.
+func (s *Service) WatchSuggest(ctx context.Context, authBot, project, botFilter string, since time.Time, apply, iKnow bool) (map[string]any, error) {
 	if since.IsZero() {
 		since = s.now().Add(-24 * time.Hour)
 	}
@@ -218,11 +223,11 @@ func (s *Service) WatchSuggest(ctx context.Context, authBot, project, botFilter 
 	if err != nil {
 		return nil, err
 	}
-	suggestions := pollURLRefs(events)
+	suggestions := buildPollSuggestions(events)
 	out := map[string]any{
-		"dry_run": !apply, "suggestions": suggestions, "count": len(suggestions),
+		"dry_run": !(apply && iKnow), "suggestions": suggestions, "count": len(suggestions),
 	}
-	if !apply || len(suggestions) == 0 {
+	if !apply || !iKnow || len(suggestions) == 0 {
 		return out, nil
 	}
 	rules, err := s.loadWatchRules(ctx, authBot, project)
@@ -230,14 +235,7 @@ func (s *Service) WatchSuggest(ctx context.Context, authBot, project, botFilter 
 		return nil, err
 	}
 	for _, sug := range suggestions {
-		id := "poll-" + sanitizeKV(strings.TrimPrefix(strings.TrimPrefix(sug.Ref, "https://"), "http://"))
-		if len(id) > 40 {
-			id = id[:40]
-		}
-		rules = append(rules, WatchRule{
-			ID: id, Kind: "proxy", Type: "recheck", Window: "1h", MaxN: 5,
-			Message: "url poll budget for " + sug.Ref,
-		})
+		rules = append(rules, sug.ProposedRule)
 	}
 	b, _ := json.Marshal(rules)
 	rec, err := s.V.Get(ctx, authBot, project, WatchRulesKey(), 0)
@@ -258,5 +256,6 @@ func (s *Service) WatchSuggest(ctx context.Context, authBot, project, botFilter 
 		return nil, err
 	}
 	out["applied"] = true
+	out["dry_run"] = false
 	return out, nil
 }

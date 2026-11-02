@@ -285,17 +285,22 @@ var toolDefs = []map[string]any{
 		"inputSchema": obj(map[string]any{"project": proj, "bot": str, "since": str})},
 	{"name": "usage_classes", "description": "Aggregate tokens/events by class= (chat|browser|mcp|script).",
 		"inputSchema": obj(map[string]any{"project": proj, "bot": str, "since": str})},
-	{"name": "watch_suggest", "description": "Polling→watch suggestions; apply=true writes watch.rules (default dry-run).",
+	{"name": "watch_suggest", "description": "Polling→watch suggestions; apply+i_know writes watch.rules (default dry-run).",
 		"inputSchema": map[string]any{"type": "object", "properties": map[string]any{
-			"project": proj, "bot": str, "since": str, "apply": map[string]any{"type": "boolean"},
+			"project": proj, "bot": str, "since": str,
+			"apply": map[string]any{"type": "boolean"}, "i_know": map[string]any{"type": "boolean"},
 		}, "additionalProperties": false}},
 	{"name": "usage_digest", "description": "Daily rollup + weekly limit block; save writes usage.digest.<date>.",
 		"inputSchema": map[string]any{"type": "object", "properties": map[string]any{
 			"project": proj, "date": str, "week_limit": integer, "near_pct": map[string]any{"type": "number"},
 			"save": map[string]any{"type": "boolean"},
 		}, "additionalProperties": false}},
-	{"name": "memory_reset_pack", "description": "Export must-keep notes + usage snapshot; no deletes.",
-		"inputSchema": obj(map[string]any{"project": proj})},
-	{"name": "memory_reset_compare", "description": "Token delta vs usage.reset.before snapshot.",
-		"inputSchema": obj(map[string]any{"project": proj})},
+	{"name": "memory_reset_pack", "description": "Export must-keep notes + before.json; optional save_vault for usage.reset.before.",
+		"inputSchema": map[string]any{"type": "object", "properties": map[string]any{
+			"project": proj, "bot": str, "out_dir": str, "save_vault": map[string]any{"type": "boolean"},
+		}, "additionalProperties": false}},
+	{"name": "memory_reset_compare", "description": "Token delta vs before file or usage.reset.before.",
+		"inputSchema": map[string]any{"type": "object", "properties": map[string]any{
+			"project": proj, "before_path": str, "bot": str,
+		}, "additionalProperties": false}},
 }

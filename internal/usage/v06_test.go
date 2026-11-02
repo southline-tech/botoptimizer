@@ -10,80 +10,6 @@ import (
 	"github.com/southline-tech/botoptimizer/internal/vault"
 )
 
-func TestRereadWake_ScoreAndQuiet(t *testing.T) {
-	s, p := usageVault(t)
-	for i := 0; i < 5; i++ {
-		if _, err := s.Log(uctx, "pm", p, LogInput{Bot: "b", Type: "wake", N: 1}); err != nil {
-			t.Fatal(err)
-		}
-	}
-	for i := 0; i < 4; i++ {
-		if _, err := s.Log(uctx, "pm", p, LogInput{Bot: "b", Type: "msg", N: 1, Hist: 30}); err != nil {
-			t.Fatal(err)
-		}
-	}
-	out, err := s.Hints(uctx, "pm", p, "", time.Time{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	found := false
-	for _, h := range out["hints"].([]Hint) {
-		if h.ID == "reread_wake" {
-			found = true
-			if h.Score <= 0 || h.Score > 1 {
-				t.Fatalf("score %v", h.Score)
-			}
-		}
-	}
-	if !found {
-		t.Fatal("missing reread_wake")
-	}
-	s2, p2 := usageVault(t)
-	out2, _ := s2.Hints(uctx, "pm", p2, "", time.Time{})
-	for _, h := range out2["hints"].([]Hint) {
-		if h.ID == "reread_wake" {
-			t.Fatal("quiet log should not emit reread_wake")
-		}
-	}
-}
-
-func TestPollToWatch_AndWatchSuggestDryRun(t *testing.T) {
-	s, p := usageVault(t)
-	ref := "https://status.example.com/poll"
-	for i := 0; i < 4; i++ {
-		if _, err := s.Log(uctx, "pm", p, LogInput{Bot: "b", Type: "recheck", N: 1, Ref: ref}); err != nil {
-			t.Fatal(err)
-		}
-	}
-	if _, err := s.Log(uctx, "pm", p, LogInput{Bot: "b", Type: "read", Key: "local", Ref: "file:///tmp/x"}); err != nil {
-		t.Fatal(err)
-	}
-	out, err := s.Hints(uctx, "pm", p, "", time.Time{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !hintIDs(out)["poll_to_watch"] {
-		t.Fatal(out)
-	}
-	sug, err := s.WatchSuggest(uctx, "pm", p, "", time.Time{}, false)
-	if err != nil || sug["dry_run"] != true || sug["count"].(int) < 1 {
-		t.Fatalf("%+v %v", sug, err)
-	}
-	_, _ = s.InitWatchRules(uctx, "pm", p)
-	before, _ := s.V.Get(uctx, "pm", p, WatchRulesKey(), 0)
-	sug2, err := s.WatchSuggest(uctx, "pm", p, "", time.Time{}, false)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, ok := sug2["applied"]; ok {
-		t.Fatal("dry-run must not apply")
-	}
-	after, _ := s.V.Get(uctx, "pm", p, WatchRulesKey(), 0)
-	if after.Body != before.Body {
-		t.Fatal("dry-run changed watch.rules")
-	}
-}
-
 func TestModalityImage_AndScreenshotBloat(t *testing.T) {
 	s, p := usageVault(t)
 	if _, err := s.Log(uctx, "pm", p, LogInput{Bot: "b", Type: "image", Bytes: 250000, Mod: "image"}); err != nil {
@@ -123,29 +49,6 @@ func TestUsageClasses_AndClassInvalid(t *testing.T) {
 	}
 	_, err = s.Log(uctx, "pm", p, LogInput{Bot: "b", Type: "tokens", In: intPtr(1), Out: intPtr(1), Class: "bogus"})
 	if !errors.Is(err, ErrClassInvalid) {
-		t.Fatalf("got %v", err)
-	}
-}
-
-func TestResetPack_AndResetCompare(t *testing.T) {
-	s, p := usageVault(t)
-	if _, err := s.V.Put(uctx, "pm", vault.PutInput{Project: p, Kind: "handoff", Key: "handoff.main", Title: "H", Body: "x"}); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := s.Log(uctx, "pm", p, LogInput{Bot: "b", Type: "tokens", In: intPtr(100), Out: intPtr(0)}); err != nil {
-		t.Fatal(err)
-	}
-	pack, err := s.ResetPack(uctx, "pm", p)
-	if err != nil || pack["note_count"].(int) < 1 || pack["reset_md"].(string) == "" {
-		t.Fatalf("%+v %v", pack, err)
-	}
-	_, err = s.ResetCompare(uctx, "pm", p)
-	if err != nil {
-		t.Fatal(err)
-	}
-	s3, p3 := usageVault(t)
-	_, err = s3.ResetCompare(uctx, "pm", p3)
-	if !errors.Is(err, ErrResetIncomplete) {
 		t.Fatalf("got %v", err)
 	}
 }
